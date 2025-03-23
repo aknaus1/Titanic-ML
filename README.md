@@ -17,7 +17,7 @@ titanic-prediction
 │   └── data
 │       ├── train.csv         # Training data
 │       ├── test.csv          # Test data
-│       └── gender_submission.csv # Submission data with actual survival results
+│       └── gender_submission.csv # Submission data example if only gender was considered
 ├── go.mod                # Go module definition
 └── README.md             # Project documentation
 ```
@@ -52,7 +52,3 @@ The prediction model uses various attributes of the passengers, such as age, gen
 ## Test Data
 
 The test data is loaded from `internal/data/test.csv`.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any enhancements or bug fixes.
