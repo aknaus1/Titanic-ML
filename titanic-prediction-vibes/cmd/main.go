@@ -10,7 +10,7 @@ import (
 	"titanic-prediction/internal/passenger"
 )
 
-func loadTestData(testFileName, submissionFileName string) ([]passenger.Passenger, []int) {
+func loadTestData(testFileName string) ([]passenger.Passenger, []int) {
 	// Load test data
 	testFile, err := os.Open(testFileName)
 	if err != nil {
@@ -24,27 +24,6 @@ func loadTestData(testFileName, submissionFileName string) ([]passenger.Passenge
 		log.Fatalf("failed to read test CSV: %v", err)
 	}
 
-	// Load submission data
-	submissionFile, err := os.Open(submissionFileName)
-	if err != nil {
-		log.Fatalf("failed to open submission file: %v", err)
-	}
-	defer submissionFile.Close()
-
-	submissionReader := csv.NewReader(submissionFile)
-	submissionRecords, err := submissionReader.ReadAll()
-	if err != nil {
-		log.Fatalf("failed to read submission CSV: %v", err)
-	}
-
-	// Map PassengerId to Survived
-	survivalMap := make(map[int]int)
-	for _, record := range submissionRecords[1:] { // Skip header line
-		passengerId, _ := strconv.Atoi(record[0])
-		survived, _ := strconv.Atoi(record[1])
-		survivalMap[passengerId] = survived
-	}
-
 	var passengers []passenger.Passenger
 	var actualSurvival []int
 
@@ -53,17 +32,18 @@ func loadTestData(testFileName, submissionFileName string) ([]passenger.Passenge
 			continue // Skip records with insufficient data
 		}
 		passengerId, _ := strconv.Atoi(record[0])
-		pclass, _ := strconv.Atoi(record[1])
-		age, _ := strconv.ParseFloat(record[4], 64)
-		sibsp, _ := strconv.Atoi(record[5])
-		parch, _ := strconv.Atoi(record[6])
-		fare, _ := strconv.ParseFloat(record[8], 64)
+		survival, _ := strconv.Atoi(record[1])
+		pclass, _ := strconv.Atoi(record[2])
+		age, _ := strconv.ParseFloat(record[5], 64)
+		sibsp, _ := strconv.Atoi(record[6])
+		parch, _ := strconv.Atoi(record[7])
+		fare, _ := strconv.ParseFloat(record[9], 64)
 
 		passenger := passenger.Passenger{
 			PassengerId: passengerId,
 			Pclass:      pclass,
-			Name:        record[2],
-			Gender:      record[3],
+			Name:        record[3],
+			Gender:      record[4],
 			Age:         age,
 			SibSp:       sibsp,
 			Parch:       parch,
@@ -73,28 +53,64 @@ func loadTestData(testFileName, submissionFileName string) ([]passenger.Passenge
 			Embarked:    record[10],
 		}
 		passengers = append(passengers, passenger)
-		actualSurvival = append(actualSurvival, survivalMap[passengerId])
+		actualSurvival = append(actualSurvival, survival)
 	}
 
 	return passengers, actualSurvival
 }
 
 func main() {
-	weights := model.TrainModel("internal/data/train.csv")
-	titanicModel := model.NewTitanicModel(weights)
+	var titanicModel *model.TitanicModel
+	if len(os.Args) < 2 {
+		// Try to load weights from file
+		weights, err := model.LoadWeights("internal/data/weights.csv")
+		if err != nil {
+			log.Fatalf("failed to load weights: %v", err)
+			return
+		}
+		titanicModel = model.NewTitanicModel(weights)
+		fmt.Println("Loaded model from weights.csv")
+	} else {
+		trainFileName := os.Args[1]
+		// Train the model
+		weights := model.TrainModel(trainFileName)
+		titanicModel = model.NewTitanicModel(weights)
+		titanicModel.SaveWeights("internal/data/weights.csv")
+		fmt.Println("Trained and saved model to weights.csv")
+	}
 
 	// Load test data
-	testPassengers, actualSurvival := loadTestData("internal/data/test.csv", "internal/data/gender_submission.csv")
+	testPassengers, actualSurvival := loadTestData("internal/data/train.csv")
 
 	// Make predictions and measure accuracy
 	correctPredictions := 0
+	var predictions [][]string
+	predictions = append(predictions, []string{"PassengerId", "Survived"})
+
 	for i, p := range testPassengers {
 		predictedSurvival := titanicModel.PredictSurvival(p)
-		if predictedSurvival == (actualSurvival[i] == 1) {
+		if predictedSurvival == actualSurvival[i] {
 			correctPredictions++
 		}
+		predictions = append(predictions, []string{strconv.Itoa(p.PassengerId), strconv.Itoa(predictedSurvival)})
 	}
 
 	accuracy := float64(correctPredictions) / float64(len(testPassengers))
-	fmt.Printf("Model accuracy: %.2f%%\n", accuracy*100)
+	fmt.Printf("Model accuracy: %.2f\n", accuracy)
+
+	// Save predictions to CSV file
+	outputFile, err := os.Create("cmd/predictions.csv")
+	if err != nil {
+		log.Fatalf("failed to create output file: %v", err)
+	}
+	defer outputFile.Close()
+
+	writer := csv.NewWriter(outputFile)
+	defer writer.Flush()
+
+	for _, record := range predictions {
+		if err := writer.Write(record); err != nil {
+			log.Fatalf("failed to write record to csv: %v", err)
+		}
+	}
 }

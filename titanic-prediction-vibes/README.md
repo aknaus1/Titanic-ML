@@ -51,12 +51,8 @@ The prediction model uses various attributes of the passengers, such as age, gen
 
 ## Test Data
 
-The test data is loaded from `internal/data/test.csv` and the actual survival results are loaded from `internal/data/gender_submission.csv`. The model's accuracy is calculated based on these files.
+The test data is loaded from `internal/data/test.csv`.
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue for any enhancements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for more details.

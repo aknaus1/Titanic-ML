@@ -27,7 +27,7 @@ func sigmoid(z float64) float64 {
 }
 
 // PredictSurvival predicts whether a passenger survived based on their attributes
-func (model *TitanicModel) PredictSurvival(p passenger.Passenger) bool {
+func (model *TitanicModel) PredictSurvival(p passenger.Passenger) int {
 	// Feature vector: [1, Pclass, Gender, Age, SibSp, Parch, Fare, Embarked, Cabin, Title]
 	gender := 0.0
 	if p.Gender == "female" {
@@ -74,7 +74,12 @@ func (model *TitanicModel) PredictSurvival(p passenger.Passenger) bool {
 	probability := sigmoid(z)
 
 	// Predict survival if probability > 0.5
-	return probability > 0.5
+	// return probability > 0.5
+	if probability > 0.50 {
+		return 1
+	} else {
+		return 0
+	}
 }
 
 // TrainModel trains a logistic regression model and returns the weights
@@ -138,8 +143,8 @@ func TrainModel(fileName string) []float64 {
 	weights := make([]float64, len(X[0]))
 
 	// Train the model (simple gradient descent)
-	learningRate := 0.01
-	iterations := 1000
+	learningRate := 0.001
+	iterations := 1000000
 
 	for iter := 0; iter < iterations; iter++ {
 		gradients := make([]float64, len(weights))
@@ -165,6 +170,54 @@ func TrainModel(fileName string) []float64 {
 	return weights
 }
 
+// SaveWeights saves the model weights to a CSV file
+func (model *TitanicModel) SaveWeights(fileName string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	record := make([]string, len(model.weights))
+	for i, weight := range model.weights {
+		record[i] = strconv.FormatFloat(weight, 'f', 6, 64)
+	}
+
+	if err := writer.Write(record); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LoadWeights loads the model weights from a CSV file
+func LoadWeights(fileName string) ([]float64, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	record, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	weights := make([]float64, len(record))
+	for i, value := range record {
+		weights[i], err = strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return weights, nil
+}
+
 // extractTitle extracts the title from the passenger's name
 func extractTitle(name string) float64 {
 	if strings.Contains(name, "Mr.") {
@@ -173,15 +226,36 @@ func extractTitle(name string) float64 {
 		return 2.0
 	} else if strings.Contains(name, "Miss.") {
 		return 3.0
-	} else if strings.Contains(name, "Master.") {
+	} else if strings.Contains(name, "Ms.") {
 		return 4.0
-	} else if strings.Contains(name, "Dr.") {
+	} else if strings.Contains(name, "Master.") {
 		return 5.0
-	} else if strings.Contains(name, "Rev.") {
+	} else if strings.Contains(name, "Dr.") {
 		return 6.0
-	} else if strings.Contains(name, "Col.") {
+	} else if strings.Contains(name, "Rev.") {
 		return 7.0
+	} else if strings.Contains(name, "Col.") {
+		return 8.0
+	} else if strings.Contains(name, "Major.") {
+		return 9.0
+	} else if strings.Contains(name, "Capt.") {
+		return 10.0
+	} else if strings.Contains(name, "Mlle.") {
+		return 11.0
+	} else if strings.Contains(name, "Mme.") {
+		return 12.0
+	} else if strings.Contains(name, "Sir.") {
+		return 13.0
+	} else if strings.Contains(name, "Lady.") {
+		return 14.0
+	} else if strings.Contains(name, "Countess.") {
+		return 15.0
+	} else if strings.Contains(name, "Jonkheer.") {
+		return 16.0
+	} else if strings.Contains(name, "Don.") {
+		return 17.0
 	}
+	log.Printf("No title found for name: %s", name)
 	return 0.0
 }
 
