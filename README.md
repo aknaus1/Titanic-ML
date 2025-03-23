@@ -52,3 +52,7 @@ The prediction model uses various attributes of the passengers, such as age, gen
 ## Test Data
 
 The test data is loaded from `internal/data/test.csv`.
+
+## References
+
+This project and datasets are based on the Kaggle competition "Titanic: Machine Learning from Disaster". You can find more information and the original datasets on the [Competition page](https://www.kaggle.com/competitions/titanic).
